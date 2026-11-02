@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Parented on a framework theme so the app needs no AppCompat dependency;
+         all in-app UI is Compose, which supplies its own styling. -->
+    <style name="Theme.YouTubeQuiz" parent="android:Theme.Material.NoActionBar">
+        <item name="android:statusBarColor">@android:color/transparent</item>
+        <item name="android:navigationBarColor">@android:color/transparent</item>
+    </style>
+
+    <!-- Used by the overlay window, which is built from plain Views. -->
+    <style name="Theme.YouTubeQuiz.Overlay" parent="android:Theme.Material.NoActionBar">
+        <item name="android:windowBackground">@android:color/transparent</item>
+    </style>
+</resources>

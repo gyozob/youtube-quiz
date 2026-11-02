@@ -1,0 +1,17 @@
+# Pin line endings so the repo does not depend on each machine's core.autocrlf.
+* text=auto eol=lf
+
+# Windows-only scripts keep CRLF.
+*.bat   text eol=crlf
+*.cmd   text eol=crlf
+*.ps1   text eol=crlf
+
+# The Gradle wrapper script is run by a Unix shell: CRLF would break it.
+gradlew text eol=lf
+
+# Binaries git must not touch.
+*.jar  binary
+*.png  binary
+*.jpg  binary
+*.webp binary
+*.keystore binary

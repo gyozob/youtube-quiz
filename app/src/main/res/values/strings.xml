@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">YouTube Quiz</string>
+    <string name="accessibility_service_label">YouTube Quiz watcher</string>
+    <string name="accessibility_service_description">Detects when YouTube is in the foreground so the quiz can interrupt playback. Reads no screen content.</string>
+
+    <string name="overlay_prompt">Tap the matching picture</string>
+    <string name="overlay_replay">Play the question again</string>
+    <string name="overlay_escape">Emergency dismiss</string>
+</resources>
