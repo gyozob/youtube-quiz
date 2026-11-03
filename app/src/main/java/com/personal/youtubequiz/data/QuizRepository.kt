@@ -98,17 +98,23 @@ class QuizRepository private constructor(context: Context) {
      * Picks a random question whose tag has enough images, then two distractors
      * from the same tag. Returns null when nothing is playable, which the
      * caller treats as "skip this interval" rather than an error.
+     *
+     * [avoidQuestionId] is a preference, not a filter: practice mode runs
+     * rounds back to back and asking the same thing twice in a row feels
+     * broken, but a library with a single question must still work.
      */
-    fun buildRound(random: Random = Random.Default): QuizRound? {
+    fun buildRound(random: Random = Random.Default, avoidQuestionId: Long? = null): QuizRound? {
         val playableTags = tagStatuses().filter { it.isPlayable }.map { it.tag }.toSet()
         if (playableTags.isEmpty()) {
             Log.w(TAG, "no tag has a question and at least ${TagStatus.CHOICES_PER_ROUND} images")
             return null
         }
 
-        val question = questions()
-            .filter { it.tag in playableTags }
+        val playable = questions().filter { it.tag in playableTags }
+        val question = playable
+            .filter { it.id != avoidQuestionId }
             .randomOrNull(random)
+            ?: playable.randomOrNull(random)
             ?: return null
 
         return QuizRound.build(question, imagesByTag(question.tag), random)

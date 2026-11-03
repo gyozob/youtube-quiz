@@ -40,6 +40,13 @@ class YouTubeWatchService : AccessibilityService() {
 
     private var round: QuizRound? = null
 
+    /**
+     * Practice mode chains rounds together instead of dismissing after a
+     * correct answer, and is only ever started by hand from the settings
+     * screen -- the interval timer never enters it.
+     */
+    private var practising = false
+
     override fun onServiceConnected() {
         super.onServiceConnected()
         repository = QuizRepository.get(this)
@@ -102,6 +109,7 @@ class YouTubeWatchService : AccessibilityService() {
             audioPlayer.stop()
             overlay.hide()
             mediaControl.release()
+            practising = false
             resetInterval(arm = false)
         }
     }
@@ -158,7 +166,9 @@ class YouTubeWatchService : AccessibilityService() {
             Log.i(TAG, "correct answer for question ${current.question.id}")
             overlay.setAcceptingTaps(false)
             // Requirement order: feedback sound, then dismiss, then resume.
-            audioPlayer.play(prefs.correctSoundPath) { finishRound(resumePlayback = true) }
+            audioPlayer.play(prefs.correctSoundPath) {
+                if (practising) advancePractice(after = current) else finishRound(resumePlayback = true)
+            }
         }
 
         override fun onWrong() {
@@ -166,27 +176,45 @@ class YouTubeWatchService : AccessibilityService() {
             Log.i(TAG, "wrong answer for question ${current.question.id}")
             overlay.setAcceptingTaps(false)
             audioPlayer.play(prefs.wrongSoundPath) {
+                // Drop the highlight as the question starts again, not when it
+                // ends: leaving the wrong card ringed while it replays reads as
+                // if that answer were still under consideration.
+                overlay.clearSelection()
                 audioPlayer.play(current.question.audioPath) {
                     overlay.setAcceptingTaps(true)
                 }
             }
         }
 
-        override fun onReplay() {
-            val current = round ?: return
-            overlay.setAcceptingTaps(false)
-            audioPlayer.play(current.question.audioPath) { overlay.setAcceptingTaps(true) }
+        override fun onExit() {
+            Log.i(TAG, "practice mode exited")
+            // Nothing was paused to start practice, so nothing is resumed here.
+            finishRound(resumePlayback = false)
         }
 
         override fun onForceDismiss() {
-            finishRound(resumePlayback = true)
+            finishRound(resumePlayback = !practising)
         }
+    }
+
+    /** Draws the next practice question into the window that is already up. */
+    private fun advancePractice(after: QuizRound) {
+        val next = repository.buildRound(avoidQuestionId = after.question.id)
+        if (next == null) {
+            Log.w(TAG, "practice ran out of playable questions")
+            finishRound(resumePlayback = false)
+            return
+        }
+        round = next
+        overlay.showNext(next)
+        audioPlayer.play(next.question.audioPath)
     }
 
     private fun finishRound(resumePlayback: Boolean) {
         audioPlayer.stop()
         overlay.hide()
         round = null
+        practising = false
         if (resumePlayback) mediaControl.resume(prefs.pauseStrategy) else mediaControl.release()
         resetInterval()
     }
@@ -204,9 +232,27 @@ class YouTubeWatchService : AccessibilityService() {
 
     /** Shows a real round immediately. Returns false if there is nothing to show. */
     fun diagnosticShowOverlay(): Boolean {
+        practising = false
         val next = repository.buildRound() ?: return false
         round = next
         if (!overlay.show(next, overlayListener)) return false
+        audioPlayer.play(next.question.audioPath)
+        return true
+    }
+
+    /**
+     * Same as [diagnosticShowOverlay] but keeps going: every correct answer
+     * rolls straight into another question until the exit button is tapped.
+     */
+    fun diagnosticStartPractice(): Boolean {
+        val next = repository.buildRound() ?: return false
+        round = next
+        if (!overlay.show(next, overlayListener, showExit = true)) {
+            round = null
+            return false
+        }
+        practising = true
+        Log.i(TAG, "practice mode started")
         audioPlayer.play(next.question.audioPath)
         return true
     }

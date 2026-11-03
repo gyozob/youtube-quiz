@@ -12,53 +12,18 @@
     android:background="#F00D0D0D"
     tools:theme="@style/Theme.YouTubeQuiz.Overlay">
 
+    <!-- Cards are added here in code: the row has to flip to a column in
+         portrait, and the images come from the database. -->
     <LinearLayout
+        android:id="@+id/overlay_choices"
         android:layout_width="match_parent"
         android:layout_height="match_parent"
         android:gravity="center"
-        android:orientation="vertical"
+        android:orientation="horizontal"
         android:paddingStart="16dp"
         android:paddingTop="28dp"
         android:paddingEnd="16dp"
-        android:paddingBottom="20dp">
-
-        <TextView
-            android:id="@+id/overlay_prompt"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:layout_marginBottom="12dp"
-            android:text="@string/overlay_prompt"
-            android:textColor="#FFFFFFFF"
-            android:textSize="20sp"
-            android:textStyle="bold" />
-
-        <!-- Cards are added here in code: the row has to flip to a column in
-             portrait, and the images come from the database. -->
-        <LinearLayout
-            android:id="@+id/overlay_choices"
-            android:layout_width="match_parent"
-            android:layout_height="0dp"
-            android:layout_weight="1"
-            android:gravity="center"
-            android:orientation="horizontal" />
-
-        <TextView
-            android:id="@+id/overlay_replay"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="14dp"
-            android:background="@drawable/replay_background"
-            android:clickable="true"
-            android:focusable="true"
-            android:paddingStart="28dp"
-            android:paddingTop="14dp"
-            android:paddingEnd="28dp"
-            android:paddingBottom="14dp"
-            android:text="@string/overlay_replay"
-            android:textColor="#FFFFFFFF"
-            android:textSize="16sp" />
-
-    </LinearLayout>
+        android:paddingBottom="20dp" />
 
     <!-- Invisible safety valve. The overlay deliberately refuses to go away
          until the question is answered, which would be a trap if the content
@@ -69,5 +34,24 @@
         android:layout_height="72dp"
         android:layout_gravity="top|start"
         android:contentDescription="@string/overlay_escape" />
+
+    <!-- Practice mode only, and declared after the escape hatch so it sits on
+         top of it; while it is gone the hatch owns the corner again. -->
+    <TextView
+        android:id="@+id/overlay_exit"
+        android:layout_width="48dp"
+        android:layout_height="48dp"
+        android:layout_gravity="top|start"
+        android:layout_margin="12dp"
+        android:background="@drawable/exit_background"
+        android:clickable="true"
+        android:contentDescription="@string/overlay_exit"
+        android:focusable="true"
+        android:gravity="center"
+        android:text="@string/overlay_exit_glyph"
+        android:textColor="#FFFFFFFF"
+        android:textSize="26sp"
+        android:textStyle="bold"
+        android:visibility="gone" />
 
 </com.personal.youtubequiz.service.OverlayRootView>

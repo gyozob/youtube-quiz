@@ -90,10 +90,15 @@ When something fails on-device, add logging and read it. A past bug
 `openInputStream`) was invisible because the failure path returned a silent
 null; guessing cost far more than one log line would have.
 
-Two device-testing traps:
+Three device-testing traps:
 
 - **Never script `adb shell input` while a human is using the phone.** Blind
   taps land in whatever is on screen; this once wandered into Settings and
   toggled an unrelated accessibility shortcut.
 - **Permissions must be granted by hand** on the device. Granting overlay or
   accessibility over adb is usually blocked, and is the user's call anyway.
+- **"Enabled" is not "bound".** If the accessibility service seems to keep
+  switching itself off on a Xiaomi, suspect nothing in this repo: it is the
+  Autostart app-op (`cmd appops get <pkg> 10008`), which blocks the rebind
+  after MIUI kills the process. `dumpsys accessibility` tells enabled from
+  bound. README's *Keeping the service alive* section has the detail.

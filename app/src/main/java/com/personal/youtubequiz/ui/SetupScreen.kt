@@ -271,6 +271,25 @@ fun SetupScreen(state: AppState, modifier: Modifier = Modifier) {
                         }
                     }) { Text("Show a quiz now") }
 
+                    Button(onClick = {
+                        val service = YouTubeWatchService.instance
+                        when {
+                            service == null ->
+                                context.toast("Accessibility service is not running")
+                            !Permissions.canDrawOverlays(context) ->
+                                context.toast("Grant \"Display over other apps\" first")
+                            !service.diagnosticStartPractice() ->
+                                context.toast("No tag has a question and 3 images yet")
+                            else -> Unit
+                        }
+                    }) { Text("Practice mode") }
+
+                    Text(
+                        "Practice keeps asking new questions after each correct " +
+                            "answer. Tap the X in the top-left corner to stop.",
+                        style = MaterialTheme.typography.bodySmall,
+                    )
+
                     Text(
                         "Logs: adb logcat -s YTQuiz:V",
                         style = MaterialTheme.typography.bodySmall,

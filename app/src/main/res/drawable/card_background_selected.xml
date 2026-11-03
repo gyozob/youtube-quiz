@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+    Applied to the card the user just tapped. The answer is resolved by sound,
+    which gives no hint about *which* picture was hit, so the selection has to
+    be unmistakable on its own: a thick accent ring over a tinted fill.
+-->
+<shape xmlns:android="http://schemas.android.com/apk/res/android"
+    android:shape="rectangle">
+    <solid android:color="#FFD6EBFF" />
+    <stroke android:width="8dp" android:color="#FF1E88E5" />
+    <corners android:radius="18dp" />
+</shape>

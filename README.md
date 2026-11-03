@@ -176,15 +176,43 @@ then authenticate. Installing through `tools\run.ps1` normally avoids this
 entirely, because `adb install` is not treated as a sideload and the script also
 clears the app-op.
 
-#### Battery, on Xiaomi specifically
+#### Keeping the service alive, on Xiaomi specifically
 
-The Setup tab's *Grant* covers the standard Doze whitelist, but HyperOS has its
-own killer on top:
+The Setup tab's *Grant* covers the standard Doze whitelist, but HyperOS has two
+more killers stacked on top of it, and neither is reachable from the AOSP
+battery screens. Do all three:
 
-**Settings → Apps → YouTube Quiz → Battery saver → No restrictions**
+1. **Security app → Permissions → Autostart → YouTube Quiz → on**
+2. **Settings → Apps → YouTube Quiz → Battery saver → No restrictions**
+3. Open Recents, drag the app's card down, tap the **padlock** so "clear all"
+   skips it
 
-Skip this and MIUI freezes the accessibility service after a while; the timer
-stops and the quiz silently never fires.
+**Autostart is the one that matters most**, and it produces a symptom that looks
+nothing like a battery problem: the accessibility service appears to switch
+itself off every so often, and the only cure seems to be toggling it off and on
+by hand in Settings.
+
+The mechanism: the service runs inside the app's process. When MIUI's cleaner
+kills that process, Android tries to rebind the service, which means **starting
+the app process in the background** -- exactly what Autostart gates. Denied, the
+rebind never happens, while the Settings row happily goes on saying "enabled".
+Toggling it off and on is a user-initiated bind, which MIUI does allow, so the
+ritual works and tells you nothing about the cause.
+
+Worth knowing because the usual suspects all look innocent while this is
+happening: no crash in `adb logcat -b crash`, `stopped=false` on the package,
+whitelisted in `dumpsys deviceidle`, standby bucket `5` (EXEMPTED). The only
+thing that shows it is the app-op, which prints as a bare number:
+
+```powershell
+adb shell cmd appops get com.personal.youtubequiz 10008   # expect: allow
+```
+
+`ignore` means Autostart is denied. MIUI usually refuses to let `appops set`
+change its own ops, so grant it in the Security app rather than over adb.
+
+Separately: every `adb install -r` replaces the APK and tears the service down.
+It normally rebinds on its own, but after a reinstall it is worth a glance.
 
 ### 7. Add content
 
@@ -232,9 +260,15 @@ All read-only, useful when the UI says one thing and the system thinks another:
 $pkg = 'com.personal.youtubequiz'
 
 adb shell cmd appops get $pkg SYSTEM_ALERT_WINDOW          # expect: allow
+adb shell cmd appops get $pkg 10008                       # Xiaomi Autostart; expect: allow
 adb shell settings get secure enabled_accessibility_services
 adb shell dumpsys deviceidle whitelist | Select-String youtubequiz
 adb shell dumpsys package $pkg | Select-String 'RECORD_AUDIO.*granted'
+
+# Enabled is not the same as running. "Enabled services" is the setting;
+# "Bound services" is what is actually alive. Enabled-but-not-bound is the
+# Xiaomi Autostart failure described above.
+adb shell dumpsys accessibility | Select-String 'Bound services|Enabled services'
 
 # Is the service even registered? If it is missing here, it is a manifest
 # problem, not a navigation problem.
@@ -256,6 +290,7 @@ adb shell run-as $pkg ls -1 files/audio
 | Accessibility toggle greyed out | Android 13+ restricted settings — see above |
 | Cannot find the service in the list | Look for **"YouTube Quiz watcher"** under *Permissions → Downloaded apps* |
 | Quiz never fires | Master toggle off, no playable tag, or MIUI battery saver killed the service |
+| Accessibility keeps switching itself off; only toggling it off and on helps | Xiaomi **Autostart** is denied, so the service can never rebind after MIUI kills the process — see above |
 | `no playable question is available` in logs | Tag has fewer than 3 images, or no question |
 | Overlay never appears but logs say it should | *Display over other apps* was revoked |
 | Video does not pause | Try another pause strategy — see below |

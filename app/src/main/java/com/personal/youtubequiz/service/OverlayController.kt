@@ -30,7 +30,9 @@ class OverlayController(private val context: Context) {
     interface Listener {
         fun onCorrect()
         fun onWrong()
-        fun onReplay()
+
+        /** Practice mode only: the visible exit button in the top-left corner. */
+        fun onExit()
 
         /** Long-press escape hatch -- see [OverlayRootView]. */
         fun onForceDismiss()
@@ -48,7 +50,12 @@ class OverlayController(private val context: Context) {
 
     val isShowing: Boolean get() = root != null
 
-    fun show(round: QuizRound, listener: Listener): Boolean {
+    /**
+     * Adds the window and draws [round]. [showExit] reveals the practice-mode
+     * exit button; without it the only ways out are a correct answer and the
+     * long-press hatch.
+     */
+    fun show(round: QuizRound, listener: Listener, showExit: Boolean = false): Boolean {
         if (!Settings.canDrawOverlays(context)) {
             Log.w(TAG, "cannot show overlay: Display over other apps is not granted")
             return false
@@ -65,9 +72,10 @@ class OverlayController(private val context: Context) {
         val view = LayoutInflater.from(themedContext)
             .inflate(R.layout.overlay_quiz, null) as OverlayRootView
 
-        view.findViewById<View>(R.id.overlay_replay).setOnClickListener {
-            if (acceptingTaps) listener.onReplay()
-        }
+        val exit = view.findViewById<View>(R.id.overlay_exit)
+        exit.visibility = if (showExit) View.VISIBLE else View.GONE
+        exit.setOnClickListener { listener.onExit() }
+
         attachEscapeHatch(view.findViewById(R.id.overlay_escape), listener)
 
         choices = view.findViewById(R.id.overlay_choices)
@@ -84,6 +92,22 @@ class OverlayController(private val context: Context) {
             choices = null
             false
         }
+    }
+
+    /**
+     * Swaps in the next round without touching the window. Practice mode runs
+     * question after question, and removing the window between them would
+     * flash whatever is behind the overlay on every answer.
+     */
+    fun showNext(round: QuizRound) {
+        if (!isShowing) return
+        this.round = round
+        this.acceptingTaps = true
+        renderChoices()
+        Log.i(
+            TAG,
+            "overlay advanced to question " + round.question.id + " tag=" + round.question.tag,
+        )
     }
 
     fun hide() {
@@ -105,6 +129,21 @@ class OverlayController(private val context: Context) {
      */
     fun setAcceptingTaps(accepting: Boolean) {
         acceptingTaps = accepting
+    }
+
+    /**
+     * Returns the board to its untouched state. Kept separate from
+     * [setAcceptingTaps] because the two happen at different moments after a
+     * wrong guess: the highlight goes as soon as the question starts repeating,
+     * while taps stay blocked until the clip has finished.
+     */
+    fun clearSelection() {
+        val container = choices ?: return
+        for (i in 0 until container.childCount) {
+            val card = container.getChildAt(i)
+            card.setBackgroundResource(R.drawable.card_background)
+            card.alpha = 1f
+        }
     }
 
     /** The window survives rotation, but the card row has to become a column. */
@@ -164,8 +203,9 @@ class OverlayController(private val context: Context) {
                 isFocusable = true
                 contentDescription = choice.tag
                 setImageBitmap(decode(choice.imagePath))
-                setOnClickListener {
+                setOnClickListener { tapped ->
                     if (!acceptingTaps) return@setOnClickListener
+                    markSelected(tapped)
                     if (choice.id == current.correctImageId) {
                         currentListener.onCorrect()
                     } else {
@@ -174,6 +214,24 @@ class OverlayController(private val context: Context) {
                 }
             }
             container.addView(card)
+        }
+    }
+
+    /**
+     * Rings the tapped card and fades the others. The answer is reported back
+     * by sound alone, which says nothing about *which* picture was hit, so the
+     * selection has to be obvious on its own.
+     */
+    private fun markSelected(selected: View) {
+        val container = choices ?: return
+        for (i in 0 until container.childCount) {
+            val card = container.getChildAt(i)
+            if (card === selected) {
+                card.setBackgroundResource(R.drawable.card_background_selected)
+                card.alpha = 1f
+            } else {
+                card.alpha = UNSELECTED_ALPHA
+            }
         }
     }
 
@@ -215,5 +273,6 @@ class OverlayController(private val context: Context) {
         private const val CARD_MARGIN_DP = 8
         private const val CARD_PADDING_DP = 6
         private const val ESCAPE_HOLD_MS = 3_000L
+        private const val UNSELECTED_ALPHA = 0.3f
     }
 }
